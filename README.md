@@ -1,6 +1,6 @@
 # WPUPaypal
 
-This plugin helps you to make paiements via PayPal
+This WordPress plugin helps you make payments via PayPal
 
 ## How to make a paiement
 
