@@ -4,7 +4,8 @@
 Plugin Name: WPU Paypal
 Plugin URI:
 Description: This plugin helps you to make paiements via PayPal
-Version: 0.2
+Version: 0.2.1
+Thanks to: http://www.smashingmagazine.com/2011/09/05/getting-started-with-the-paypal-api/
 */
 
 if (!defined('ABSPATH')) {
@@ -317,7 +318,7 @@ class WPUPaypal
     public function GetExpressCheckoutDetails($details) {
         $transactionId = null;
 
-        if (!isset($_GET['token'], $_GET['PayerID']) || empty($_GET['token'])) {
+        if (!$this->isPaypalCallback()) {
             return $transactionId;
         }
 
