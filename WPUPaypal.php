@@ -4,7 +4,7 @@
 Plugin Name: WPU Paypal
 Plugin URI:
 Description: This plugin helps you to make paiements via PayPal
-Version: 0.1
+Version: 0.2
 */
 
 if (!defined('ABSPATH')) {
@@ -39,9 +39,19 @@ class WPUPaypal
                     'sandbox' => 'Sandbox',
                     'live' => 'Live',
                 )
+            ) ,
+            'currency' => array(
+                'name' => 'Currency',
+                'type' => 'select',
+                'datas' => array(
+                    'EUR' => 'Euro',
+                    'USD' => 'US Dollar',
+                )
             )
         ) ,
     );
+
+    private $_messages = array();
 
     /**
      * Last error message(s)
@@ -98,6 +108,12 @@ class WPUPaypal
             return;
         }
 
+        if (!isset($_POST['wpu_paypal_credentials_test']) || !wp_verify_nonce($_POST['wpu_paypal_credentials_test'], 'wpu_paypal_credentials')) {
+            $this->addMessage('Sorry, your nonce did not verify.');
+            return;
+        }
+
+        // Update fields
         foreach ($this->_plugin['options'] as $id => $option) {
             $id_field = 'wpupaypalform_' . $id;
             $value = get_option($id_field);
@@ -105,11 +121,23 @@ class WPUPaypal
                 update_option($id_field, $_POST[$id_field]);
             }
         }
+
+        // Update options
+        $this->set_options();
+
+        if (isset($_POST['test_values'])) {
+            if ($this->testCallback()) {
+                $this->addMessage('These credentials works great !', 'updated');
+            } else {
+                $this->addMessage('These credentials do not work.');
+            }
+        }
     }
 
     public function admin_page() {
         echo '<div class="wrap">';
         echo '<h1>' . $this->_plugin['name'] . '</h1>';
+        $this->admin_displayMessages();
         echo '<form action="" method="post"><table>';
         foreach ($this->_plugin['options'] as $id => $option) {
             $type = 'text';
@@ -147,7 +175,15 @@ class WPUPaypal
             }
             echo '</td></tr>';
         }
-        echo '</table><p><button type="submit" class="button">Save values</button></p></form>';
+        echo '</table>';
+        wp_nonce_field('wpu_paypal_credentials', 'wpu_paypal_credentials_test');
+        echo '<p><button name="test_values" type="submit" class="button">Test &amp; save values</button> <button name="save" type="submit" class="button button-primary">Save values</button></p>';
+        echo '</form><hr />';
+        echo '<h3>Help</h3>';
+        echo '<ul>';
+        echo '<li><a target="_blank" href="https://developer.paypal.com/webapps/developer/applications/accounts">Create test accounts</a></li>';
+        echo '<li><a target="_blank" href="https://www.paypal.com/fr/cgi-bin/webscr?cmd=_profile-api-access">Production API access</a></li>';
+        echo '</ul>';
         echo '</div>';
     }
 
@@ -157,6 +193,10 @@ class WPUPaypal
     private function set_options() {
         $this->_version = trim(get_option('wpupaypalform_version'));
         $this->_mode = trim(get_option('wpupaypalform_mode'));
+        $this->_currency = trim(get_option('wpupaypalform_currency'));
+        if (empty($this->_currency)) {
+            $this->_currency = 'EUR';
+        }
         $this->_credentials = array(
             'USER' => trim(get_option('wpupaypalform_credentials_user')) ,
             'PWD' => trim(get_option('wpupaypalform_credentials_pwd')) ,
@@ -239,7 +279,7 @@ class WPUPaypal
         }
     }
 
-    function SetExpressCheckout($details) {
+    function SetExpressCheckout($details, $redirection = true) {
 
         //Our request parameters
         $requestParams = array(
@@ -250,7 +290,7 @@ class WPUPaypal
         $orderParams = array(
             'PAYMENTREQUEST_0_AMT' => $details['total'],
             'PAYMENTREQUEST_0_SHIPPINGAMT' => '0',
-            'PAYMENTREQUEST_0_CURRENCYCODE' => 'EUR',
+            'PAYMENTREQUEST_0_CURRENCYCODE' => $this->_currency,
             'PAYMENTREQUEST_0_ITEMAMT' => $details['total']
         );
 
@@ -263,12 +303,14 @@ class WPUPaypal
 
         $response = $this->request('SetExpressCheckout', $requestParams + $orderParams + $item);
 
-        if (is_array($response) && $response['ACK'] == 'Success') {
+        if ($redirection && is_array($response) && $response['ACK'] == 'Success') {
 
             // Request successful
             $token = $response['TOKEN'];
             header('Location: ' . $this->_siteUrl . 'webscr?cmd=_express-checkout&token=' . urlencode($token));
             die;
+        } else {
+            return $response;
         }
     }
 
@@ -293,7 +335,7 @@ class WPUPaypal
             'PAYMENTACTION' => 'Sale',
             'PAYERID' => $_GET['PayerID'],
             'PAYMENTREQUEST_0_AMT' => $details['total'],
-            'PAYMENTREQUEST_0_CURRENCYCODE' => 'EUR'
+            'PAYMENTREQUEST_0_CURRENCYCODE' => $this->_currency
         );
 
         $response = $this->request('DoExpressCheckoutPayment', $requestParams);
@@ -312,6 +354,39 @@ class WPUPaypal
 
     public function isPaypalCallback() {
         return isset($_GET['token'], $_GET['PayerID']) && !empty($_GET['token']);
+    }
+
+    public function testCallback() {
+
+        // Test credentials
+        $response = $this->SetExpressCheckout(array(
+            'successurl' => site_url() ,
+            'returnurl' => site_url() ,
+            'total' => 10,
+            'name' => 'Test',
+            'desc' => 'Test callback',
+        ) , false);
+
+        return (is_array($response) && $response['ACK'] == 'Success');
+    }
+
+    /* Utilities WordPress */
+
+    public function addMessage($message, $type = 'error') {
+        $this->_messages[] = array(
+            'content' => $message,
+            'type' => $type
+        );
+    }
+
+    public function admin_displayMessages() {
+        if (empty($this->_messages)) {
+            return;
+        }
+        foreach ($this->_messages as $message) {
+            echo '<div class="' . $message['type'] . '"><p>' . $message['content'] . '</p></div>';
+        }
+        $this->_messages = array();
     }
 }
 
