@@ -3,7 +3,7 @@
 /*
 Plugin Name: WPU Paypal
 Plugin URI:
-Description: This plugin helps you to make paiements via PayPal
+Description: This WordPress plugin helps you make payments via PayPal
 Version: 0.2.1
 Thanks to: http://www.smashingmagazine.com/2011/09/05/getting-started-with-the-paypal-api/
 */
