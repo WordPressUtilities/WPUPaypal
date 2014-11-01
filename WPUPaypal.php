@@ -4,7 +4,7 @@
 Plugin Name: WPU Paypal
 Plugin URI:
 Description: This WordPress plugin helps you make payments via PayPal
-Version: 0.2.1
+Version: 0.3
 Thanks to: http://www.smashingmagazine.com/2011/09/05/getting-started-with-the-paypal-api/
 */
 
@@ -17,39 +17,7 @@ class WPUPaypal
 
     /* Plugin options */
     private $_plugin = array(
-        'id' => 'wpupaypal',
-        'name' => 'WPU PayPal Options',
-        'menu_name' => 'PayPal Options',
-        'options' => array(
-            'credentials_user' => array(
-                'name' => 'Credentials - User'
-            ) ,
-            'credentials_pwd' => array(
-                'name' => 'Credentials - PWD'
-            ) ,
-            'credentials_sig' => array(
-                'name' => 'Credentials - Sig'
-            ) ,
-            'version' => array(
-                'name' => 'API Version'
-            ) ,
-            'mode' => array(
-                'name' => 'Mode',
-                'type' => 'select',
-                'datas' => array(
-                    'sandbox' => 'Sandbox',
-                    'live' => 'Live',
-                )
-            ) ,
-            'currency' => array(
-                'name' => 'Currency',
-                'type' => 'select',
-                'datas' => array(
-                    'EUR' => 'Euro',
-                    'USD' => 'US Dollar',
-                )
-            )
-        ) ,
+        'id' => 'wpupaypal'
     );
 
     private $_messages = array();
@@ -86,6 +54,10 @@ class WPUPaypal
 
     function __construct() {
 
+        load_plugin_textdomain($this->_plugin['id'], false, dirname(plugin_basename(__FILE__)) . '/lang/');
+
+        $this->set_plugin();
+
         if (is_admin()) {
             add_action('admin_menu', array(&$this,
                 'add_admin_menu'
@@ -96,6 +68,41 @@ class WPUPaypal
         }
 
         $this->set_options();
+    }
+
+    private function set_plugin() {
+        $this->_plugin['name'] = $this->__('WPU PayPal Options');
+        $this->_plugin['menu_name'] = $this->__('PayPal Options');
+        $this->_plugin['options'] = array(
+            'credentials_user' => array(
+                'name' => $this->__('Credentials - User')
+            ) ,
+            'credentials_pwd' => array(
+                'name' => $this->__('Credentials - PWD')
+            ) ,
+            'credentials_sig' => array(
+                'name' => $this->__('Credentials - Sig')
+            ) ,
+            'version' => array(
+                'name' => $this->__('API Version')
+            ) ,
+            'mode' => array(
+                'name' => $this->__('Mode') ,
+                'type' => 'select',
+                'datas' => array(
+                    'sandbox' => 'Sandbox',
+                    'live' => 'Live',
+                )
+            ) ,
+            'currency' => array(
+                'name' => $this->__('Currency') ,
+                'type' => 'select',
+                'datas' => array(
+                    'EUR' => 'Euro',
+                    'USD' => 'US Dollar',
+                )
+            )
+        );
     }
 
     public function add_admin_menu() {
@@ -110,7 +117,7 @@ class WPUPaypal
         }
 
         if (!isset($_POST['wpu_paypal_credentials_test']) || !wp_verify_nonce($_POST['wpu_paypal_credentials_test'], 'wpu_paypal_credentials')) {
-            $this->addMessage('Sorry, your nonce did not verify.');
+            $this->addMessage($this->__('Sorry, your nonce did not verify.'));
             return;
         }
 
@@ -128,9 +135,9 @@ class WPUPaypal
 
         if (isset($_POST['test_values'])) {
             if ($this->testCallback()) {
-                $this->addMessage('These credentials works great !', 'updated');
+                $this->addMessage($this->__('These credentials works great !') , 'updated');
             } else {
-                $this->addMessage('These credentials do not work.');
+                $this->addMessage($this->__('These credentials do not work.'));
             }
         }
     }
@@ -178,12 +185,12 @@ class WPUPaypal
         }
         echo '</table>';
         wp_nonce_field('wpu_paypal_credentials', 'wpu_paypal_credentials_test');
-        echo '<p><button name="test_values" type="submit" class="button">Test &amp; save values</button> <button name="save" type="submit" class="button button-primary">Save values</button></p>';
+        echo '<p><button name="test_values" type="submit" class="button">' . $this->__('Test &amp; save values') . '</button> <button name="save" type="submit" class="button button-primary">' . $this->__('Save values') . '</button></p>';
         echo '</form><hr />';
-        echo '<h3>Help</h3>';
+        echo '<h3>' . $this->__('Help') . '</h3>';
         echo '<ul>';
-        echo '<li><a target="_blank" href="https://developer.paypal.com/webapps/developer/applications/accounts">Create test accounts</a></li>';
-        echo '<li><a target="_blank" href="https://www.paypal.com/fr/cgi-bin/webscr?cmd=_profile-api-access">Production API access</a></li>';
+        echo '<li><a target="_blank" href="https://developer.paypal.com/webapps/developer/applications/accounts">' . $this->__('Create test accounts') . '</a></li>';
+        echo '<li><a target="_blank" href="https://www.paypal.com/fr/cgi-bin/webscr?cmd=_profile-api-access">' . $this->__('Production API access') . '</a></li>';
         echo '</ul>';
         echo '</div>';
     }
@@ -194,6 +201,9 @@ class WPUPaypal
     private function set_options() {
         $this->_version = trim(get_option('wpupaypalform_version'));
         $this->_mode = trim(get_option('wpupaypalform_mode'));
+        if (empty($this->_mode)) {
+            $this->_mode = '96.0';
+        }
         $this->_currency = trim(get_option('wpupaypalform_currency'));
         if (empty($this->_currency)) {
             $this->_currency = 'EUR';
@@ -247,7 +257,7 @@ class WPUPaypal
             CURLOPT_VERBOSE => 1,
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_SSL_VERIFYHOST => 2,
-            CURLOPT_CAINFO => dirname(__FILE__) . '/cacert.pem',
+            CURLOPT_CAINFO => dirname(__FILE__) . '/inc/cacert.pem',
 
             //CA cert file
             CURLOPT_RETURNTRANSFER => 1,
@@ -388,6 +398,10 @@ class WPUPaypal
             echo '<div class="' . $message['type'] . '"><p>' . $message['content'] . '</p></div>';
         }
         $this->_messages = array();
+    }
+
+    function __($string) {
+        return __($string, $this->_plugin['id']);
     }
 }
 
