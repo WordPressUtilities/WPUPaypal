@@ -4,7 +4,7 @@
 Plugin Name: WPU Paypal
 Plugin URI:
 Description: This WordPress plugin helps you make payments via PayPal
-Version: 0.3
+Version: 0.3.1
 Thanks to: http://www.smashingmagazine.com/2011/09/05/getting-started-with-the-paypal-api/
 */
 
@@ -105,6 +105,14 @@ class WPUPaypal
         );
     }
 
+    public function get_prefixed_option_id($id) {
+        return 'wpupaypalform_' . $id;
+    }
+
+    public function get_option($id) {
+        return trim(get_option($this->get_prefixed_option_id($id)));
+    }
+
     public function add_admin_menu() {
         add_menu_page($this->_plugin['name'], $this->_plugin['menu_name'], 'manage_options', $this->_plugin['id'], array(&$this,
             'admin_page'
@@ -123,8 +131,8 @@ class WPUPaypal
 
         // Update fields
         foreach ($this->_plugin['options'] as $id => $option) {
-            $id_field = 'wpupaypalform_' . $id;
-            $value = get_option($id_field);
+            $id_field = $this->get_prefixed_option_id($id);
+            $value = $this->get_option($id);
             if (isset($_POST[$id_field]) && $value != $_POST[$id_field]) {
                 update_option($id_field, $_POST[$id_field]);
             }
@@ -158,8 +166,8 @@ class WPUPaypal
                     'Yes'
                 );
             }
-            $id_field = 'wpupaypalform_' . $id;
-            $value = get_option($id_field);
+            $id_field = $this->get_prefixed_option_id($id);
+            $value = $this->get_option($id);
             $id_name = ' name="' . $id_field . '" id="' . $id_field . '"';
             echo '<tr><td style="width:150px"><label for="' . $id_field . '">' . $option['name'] . '&nbsp;:</label></td><td>';
             switch ($type) {
@@ -199,19 +207,19 @@ class WPUPaypal
      * Set options
      */
     private function set_options() {
-        $this->_version = trim(get_option('wpupaypalform_version'));
-        $this->_mode = trim(get_option('wpupaypalform_mode'));
+        $this->_version = $this->get_option('version');
+        $this->_mode = $this->get_option('mode');
         if (empty($this->_mode)) {
             $this->_mode = '96.0';
         }
-        $this->_currency = trim(get_option('wpupaypalform_currency'));
+        $this->_currency = $this->get_option('currency');
         if (empty($this->_currency)) {
             $this->_currency = 'EUR';
         }
         $this->_credentials = array(
-            'USER' => trim(get_option('wpupaypalform_credentials_user')) ,
-            'PWD' => trim(get_option('wpupaypalform_credentials_pwd')) ,
-            'SIGNATURE' => trim(get_option('wpupaypalform_credentials_sig')) ,
+            'USER' => $this->get_option('credentials_user') ,
+            'PWD' => $this->get_option('credentials_pwd') ,
+            'SIGNATURE' => $this->get_option('credentials_sig') ,
         );
 
         /* Set URLs */
